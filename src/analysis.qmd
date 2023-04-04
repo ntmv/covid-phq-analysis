@@ -42,7 +42,6 @@ library(bayesplot)
 
 ## Exploratory Data Analysis
 
-
 ```{r echo = FALSE}
 # Read in csv
 covid_phq <- read.csv("../data/covid_phq_clean_long.csv")
@@ -94,8 +93,7 @@ covid_phq %>% group_by(time, AGE) %>%
   theme(axis.title.y=element_blank()) + theme_bw()
 ```
 
-We do see a slight increasing trend of PHQ-9 scores over the three months in the
-young adult age-group (20-39) compared to the other two age-groups.
+We do see a slight increasing trend of PHQ-9 scores over the three months in the young adult age-group (20-39) compared to the other two age-groups.
 
 Next we can look at the relationship between the demographic variables and PHQ.
 
@@ -111,7 +109,6 @@ gridExtra::grid.arrange(grobs = my_plots_list)
 Although there are a lot of points beyond the quantile + IQR range, we do see some tentative trends: married people seem to have a relatively lower PHQ score, there may be a decreasing trend in PHQ score with an increase in Household income. A negative economic impact (2) also seems to have a higher PHQ score compared to the other two categories. Perhaps only residential areas seems like it may not have an impact on the PHQ score.
 
 Finally we can look at the relationship between the item score variables and PHQ over time for 4 of the scale items (Humor, Substanceuse, Venting, and Anger Control). I did not take the time to code this more elegantly, and so generated one plot from one `ggplot` call instead of looping over the variables as I should have. I have the code for one variable displayed below and the final call to `grid.arrange`.
-
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 # Venting 
@@ -220,7 +217,7 @@ priors <- c(prior(normal(0.3, 0.5), class = "b", coef = "AGE20M39"),
             
 ```
 
-This [blog post](http://svmiller.com/blog/2021/02/thinking-about-your-priors-bayesian-analysis/) led me to try and put somewhat informative priors on all the coefficients. For example, a $\mathbb{N}(0.3,0.5)$ prior was put on the  `AGE20M39` contrast because in comparison to the reference level (`AGE65M79`), we have reasonable knowledge to believe that there would be an overall increase in the PHQ score. Weakly regularizing $\mathbb{N}(0,1)$ priors were put on all the other coefficients for which there was no strong prior knowledge. A weakly informative *student-t* (3, 0, 1) prior was put on the random intercept, which is fairly permissive for large individual level variation. The `z_i` parameter models the proportion of zeroes, and the $\text{Beta}(2, 2)$ is again a weakly informative prior over 0 and 1 that has a slightly shifted center away from 0. 
+This [blog post](http://svmiller.com/blog/2021/02/thinking-about-your-priors-bayesian-analysis/) led me to try and put somewhat informative priors on all the coefficients. For example, a $\mathbb{N}(0.3,0.5)$ prior was put on the `AGE20M39` contrast because in comparison to the reference level (`AGE65M79`), we have reasonable knowledge to believe that there would be an overall increase in the PHQ score. Weakly regularizing $\mathbb{N}(0,1)$ priors were put on all the other coefficients for which there was no strong prior knowledge. A weakly informative *student-t* (3, 0, 1) prior was put on the random intercept, which is fairly permissive for large individual level variation. The `z_i` parameter models the proportion of zeroes, and the $\text{Beta}(2, 2)$ is again a weakly informative prior over 0 and 1 that has a slightly shifted center away from 0.
 
 ## Model Fitting
 
@@ -235,7 +232,7 @@ fit2 <- brm((PHQ|trials(27) ~ time*AGE  + SEX + MARRIED +
               Planning + Acceptance + SelfBlame + Activecoping + Substanceuse + Useofinstrumentalsupport + Positivereframing + Useofemotionalsupport + (1|ID)), data= covid_phq,family = zero_inflated_binomial(), chains = 4, iter = 10000, warmup = 5000, prior = priors)
 ```
 
-We then fit the model with 4 chains using the `{brms}` package with the `cmdstanr` backend. The model fits reasonably quickly taking around 5 minutes for each chain. 
+We then fit the model with 4 chains using the `{brms}` package with the `cmdstanr` backend. The model fits reasonably quickly taking around 5 minutes for each chain.
 
 ## Posterior Predictive and Convergence Checks
 
@@ -252,7 +249,7 @@ pp_check(fit2, ndraws = 100) + theme_bw() + xlim(-2, 30)
 
 The model fit did not indicate any convergence issues and none of the $\hat{R}$ values exceeded 1 significantly. None of the ratios of the effective sizes of all the covariates against the total sample size ($\frac{N_{eff}}{N}$) drop below 0.1 (the lowest drop to 0.5).
 
-We can also look at the traceplots for some selected parameters to assess convergence. We seem to observe good mixing of the four chains. 
+We can also look at the traceplots for some selected parameters to assess convergence. We seem to observe good mixing of the four chains.
 
 ```{r eval = FALSE}
 color_scheme_set("mix-blue-pink")
@@ -261,6 +258,7 @@ fargs <- list(ncol = 4, labeller = label_parsed)
 pars <- c("zi", "sd_ID__Intercept", "b_Economically_impacted0", "b_Household_income2")
 chains_trace <- mcmc_trace(posterior_chains, pars = pars, n_warmup = 300, facet_args = fargs)
 chains_trace + theme_bw()
+
 ```
 
 ```{r echo = FALSE}
@@ -269,7 +267,7 @@ chains_trace + theme_bw()
 
 ## Answering our questions of interest
 
-Looking at the model summary, it is clear that a higher household income, working full-time (in contrast to not having a job), and being married seem to all be relatively associated with a lower PHQ score. 
+Looking at the model summary, it is clear that a higher household income, working full-time (in contrast to not having a job), and being married seem to all be relatively associated with a lower PHQ score.
 
 In terms of the coping strategies, venting, planning, the use of instrumental support and positive reframing seem to lead to a decrease in overall PHQ score, while use of emotional support, substance use, acceptance, self-blame, behavioural disengagement, higher anger and religion seem to be ineffective coping strategies, as they are associated with a higher PHQ score.
 
@@ -279,36 +277,20 @@ Finally, we do see a higher PHQ score associated with the younger age-groups, pa
 summary(fit2)
 ```
 
-## Plotting our results 
-
-```{r message = FALSE, warning = FALSE}
-library(tidybayes)
-```
-
-We can use the `{tidybayes}` package to visualize our results. 
-
-TBD
-
 ## Notes
 
-Something that could be added to this analysis is more rigorous model selection and checks. Ideally, we should have compared this full model (which is relatively over-parameterized) with a reduced model after removing coefficients in a step-wise manner through K-fold cross-validation. We can also separately model the zero-generating proportion with covariates, as well as specifically assess the young adult population to look at which coping mechanisms were successful for them in particular. 
+Something that could be added to this analysis is more rigorous model selection and checks. Ideally, we should have compared this full model (which is relatively over-parameterized) with a reduced model after removing coefficients in a step-wise manner through K-fold cross-validation. We can also separately model the zero-generating proportion with covariates, as well as specifically assess the young adult population to look at which coping mechanisms were successful for them in particular.
 
-
-## References 
+## References
 
 Fukase et al., 2022. Age-related differences in depressive symptoms and coping strategies during the COVID-19 pandemic in Japan: A longitudinal study
 
-Paul-Christian Bürkner (2017). brms: An R Package for Bayesian Multilevel
-  Models Using Stan. Journal of Statistical Software, 80(1), 1-28.
-  doi:10.18637/jss.v080.i01
+Paul-Christian Bürkner (2017). brms: An R Package for Bayesian Multilevel Models Using Stan. Journal of Statistical Software, 80(1), 1-28. doi:10.18637/jss.v080.i01
 
 Paul-Christian Bürkner (2018). Advanced Bayesian Multilevel Modeling with the R Package brms. The R Journal, 10(1), 395-411. doi:10.32614/RJ-2018-017
 
-Paul-Christian Bürkner (2021). Bayesian Item Response Modeling in R with brms and Stan. Journal of Statistical Software, 100(5), 1-54.
-  doi:10.18637/jss.v100.i05
-  
-Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). “Visualization in Bayesian workflow.” J. R. Stat. Soc. A_, *182*, 389-402. doi: 10.1111/rssa.12378 (URL: https://doi.org/10.1111/rssa.12378).
+Paul-Christian Bürkner (2021). Bayesian Item Response Modeling in R with brms and Stan. Journal of Statistical Software, 100(5), 1-54. doi:10.18637/jss.v100.i05
 
-Kay M (2023). _tidybayes: Tidy Data and Geoms for Bayesian Models_. doi:
-10.5281/zenodo.1308151 (URL: https://doi.org/10.5281/zenodo.1308151), R package
-version 3.0.4, <URL: http://mjskay.github.io/tidybayes/>.
+Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). "Visualization in Bayesian workflow." J. R. Stat. Soc. A\_, *182*, 389-402. doi: 10.1111/rssa.12378 (URL: https://doi.org/10.1111/rssa.12378).
+
+Kay M (2023). *tidybayes: Tidy Data and Geoms for Bayesian Models*. doi: 10.5281/zenodo.1308151 (URL: https://doi.org/10.5281/zenodo.1308151), R package version 3.0.4, \<URL: http://mjskay.github.io/tidybayes/\>.

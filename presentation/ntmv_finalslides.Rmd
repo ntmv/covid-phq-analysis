@@ -1,0 +1,248 @@
+---
+title: "A Statistical Analysis of Patient Mental Health in Japan during the COVID-19 Pandemic"
+author: "Nirupama Tamvada"
+institute: "SPPH 501, University of British Columbia"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+```
+
+
+### Data Overview
+
+- **Study Type:** Longitudinal survey
+
+- **Population:** Equal-sized age groups (20-69 years old), sex groups (male and female) and employment status (full-time worker; no regular employment; and unemployed, including homemaker, retired, and jobless)
+
+- Lived in Japanese prefectures under special precautions that were related to the COVID-19 pandemic: Tokyo, Saitama, Chiba, Kanagawa, Osaka, Hyogo, Fukuoka, Hokkaido, Ibaraki, Ishikawa, Gifu, Aichi, and Kyoto. 
+
+- **Repeated measures:** Three surveys were conducted: July 2020, September 2020 and January 2021
+
+- **Response variable of interest:** Patient Health Questionnaire-9 (PHQ-9), a diagnostic assessment for mental health (score from 0-27)
+
+- **Covariates:** Demographic information, economic impact of the COVID-19 pandemic, anger, and coping strategy scale.
+
+- **Dataset size:** 1468 patients, 17 covariates
+
+---
+
+### Variable Descriptions
+
+#### **Demographic variables:** 
+- **Age, sex, Residential Areas** (0 = out of mild lockdown, 1 = in mild lockdown)
+
+- **Having an underlying disease** (0 = Yes, 1 = No)
+
+- **Martial Status** (1 = Single, 2 = Married), **Children** (1 = No, 2 = Yes)
+
+- **Household-income** (1-5, 1 <= 2 million JPY, 5 >= 8 million JPY)
+
+- **Employment status** (0= Full-time, 1 = No regular job, 2 = Home-maker, 3 = Not working)
+
+- **Economically Impacted** (0 = Positive impact, 1 = No impact, 2 = Negative impact)
+
+---
+
+### Variable Descriptions
+
+#### **Anger scales:** State anger scale and anger control scales were used (subscales of State-Trait Anger Expression Inventory (STAXI))
+
+- **State anger scale:** score can range from 0 to 30, with higher scores indicating higher state anger. 
+
+- **Anger control scale:** Score can range from 0 to 21; higher scores indicate that the participant makes a greater attempt to keep calm and restrain one's behavior.
+
+#### **Coping scales:**
+
+- **Brief Coping Orientation scale:** scale of different coping mechanisms with scores from 2-8 (example: Substance Use, Use of instrumental support, Religion etc.) 
+
+- Higher scores indicate higher levels of coping styles
+
+---
+
+### Questions of Interest 
+
+**1.** How do changes in patient mental health over time during the COVID-19 pandemic differ between the three different age-groups (young adults (20-39), middle-aged adults (40-64) and older adults (65-79)?
+
+&nbsp;
+
+**2.** How do general demographic characteristics (sex, financial stability, relationship status) play a role in influencing the patient mental health score?
+
+&nbsp;
+
+**3.** Which coping mechanisms seem to be associated with an increase in patient mental health (quantified by a low PHQ score)?
+
+---
+
+### Model: Distribution of response variable (PHQ scores)
+
+- Positive scores: bounded at 0 and 27
+
+- Relatively high proportion of zero scores
+
+```{r, out.width= '70%', fig.align='center', echo = FALSE}
+knitr::include_graphics("~/Desktop/covid-phq-analysis/presentation/images/responsedist.png")
+```
+---
+
+### Model: Zero-inflation in PHQ score 
+
+- Zero-inflated models: "structural zeroes" and "sampling zeroes"
+
+- "Structural zeroes:" Patient may just have been feeling healthy mentally
+- "Sampling zeroes:" Patient may select zero on purpose: maybe feeling stigma to declare that they are depressed/questions may not be fine-grained to their symptoms but they may still be depressed: **not "true" zeroes**
+
+```{r, out.width= '60%', fig.align='center', echo = FALSE}
+knitr::include_graphics("~/Desktop/covid-phq-analysis/presentation/images/responsedist.png")
+```
+---
+### Model: Distribution of response variable (PHQ scores)
+
+- Possible scores are all values in $[0, 27]$
+
+- Can think of each of the 27 possibilities of scores as 27 trials. A patient could thus theoretically have a chance to score a success (1) in each "trial". This is akin to an aggregated Binomial sampling distribution
+
+- Use a zero-inflated binomial distribution: respects bounds nature of data
+
+```{r, out.width= '80%', fig.align='center', echo = FALSE}
+knitr::include_graphics("~/Desktop/covid-phq-analysis/presentation/images/phq.png")
+```
+
+---
+### Model Specification: Mixed Effects Zero-inflated Binomial (ZIB) Linear Model 
+
+Let $\text{PHQ}_{ij}$ denote the PHQ scores of interest for $i$, $i = 1,...., N$ for subjects $j = 1,....,J$.
+
+[Likelihood]
+
+$$\text{PHQ}_{ij} = \begin{cases}
+    0,& \text{with probability} \ zi\\
+    \mathcal{B}(27, \pi_{ij}), &  \text{with probability} \ (1-zi)
+\end{cases}$$
+
+$\text{logit}(\pi_{ij}) = \alpha_{j[i]} + \boldsymbol{\beta_{\{k = 1,..,18\}}} \ {\text{\{Demographic and Scale variables\}}}_{ij}$
+
+[Individual-level random effects] 
+
+
+$$\alpha_j \sim \mathcal{N}(\mu_{\alpha_{j}}, {\sigma^2}_{\alpha_{j}})$$
+
+$zi$ modelled as parameter independent of covariates
+
+---
+
+## Bayesian Mixed Effects Model: Priors
+
+- Model fit with `{brms}` package in `R`: Uses Hamiltonian Monte 
+Carlo no-U turn sampler (HMC-NUTS)
+
+- Different priors for $\beta_k$'s: some of which include $\mathcal{N}(0, 1)$, $\mathcal{N}(0.1, 0.5)$ and $\mathcal{N}(-0.1, 0.5)$
+
+- ${\sigma}_{\alpha_{j}} \sim$ Student-t $(3, 0, 1)$ (standard deviation of random effects)
+
+- $zi \sim \text{Beta}(2, 2)$ (mixing proportion/proportion of "sampling zeroes")
+
+```{r echo = FALSE, out.width="29%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
+knitr::include_graphics(c("~/Desktop/covid-phq-analysis/presentation/images/wip.png",
+"~/Desktop/covid-phq-analysis/presentation/images/ip.png", 
+"~/Desktop/covid-phq-analysis/presentation/images/variance.png",
+"~/Desktop/covid-phq-analysis/presentation/images/zi_prior.png"))
+```
+
+---
+
+## Posterior Predictive Check 
+
+- Draw 100 simulated datasets under the fitted model and plot against observed data distribution 
+- Good check to see if model makes "sense" - gives valid predictions 
+
+```{r, out.width= '80%', fig.align='center', echo = FALSE}
+knitr::include_graphics("~/Desktop/covid-phq-analysis/presentation/images/pp_check.png")
+```
+
+---
+
+## Convergence checks 
+
+- Ratio of effective sample size $n_{eff}/N$ well above 0.1 for all covariates 
+
+- Don't see any obvious issues in traceplots
+
+```{r, out.width= '80%', fig.align='center', echo = FALSE}
+knitr::include_graphics("~/Desktop/covid-phq-analysis/presentation/images/chain_mixing.png")
+```
+
+---
+
+## Effects of demographic variables 
+
+- Shaded area represents area with 80 % probability mass
+
+- Being married (v.single), and being in highest income bracket (v.lowest) associated with decrease in PHQ, Not working (v. working full-time) and negative economic impact (v.positive) associated with increase in PHQ score
+
+```{r, out.width= '60%', fig.align='center', echo = FALSE}
+knitr::include_graphics("~/Desktop/covid-phq-analysis/presentation/images/demographics.png")
+```
+
+---
+
+## Effects of scale variables 
+
+- Use of instrumental support, positive reframing, active-coping, planning, venting, associated with decrease in PHQ score - seem to be good coping strategies
+
+```{r, out.width= '70%', fig.align='center', echo = FALSE}
+knitr::include_graphics("~/Desktop/covid-phq-analysis/presentation/images/scales.png")
+```
+
+---
+## Interaction between effects of time and age
+
+- Lowest PHQ scores in age-group 20-39 (young adults)
+- For other age-groups, PHQ score seems to go down or stay constant by 6 months, increases for young adults
+
+```{r, out.width= '80%', fig.align='center', echo = FALSE}
+knitr::include_graphics("~/Desktop/covid-phq-analysis/presentation/images/timeeffects.png")
+```
+
+---
+
+## Random effect intercept standard deviation 
+
+- Large amount of patient-level variation 
+
+**Posterior Distribution of Estimated Random Intercept SD**
+
+```{r echo = FALSE, fig.show='hold', out.width = '50%'}
+knitr::include_graphics(c("~/Desktop/covid-phq-analysis/presentation/images/patient_level.png", "~/Desktop/covid-phq-analysis/presentation/images/sd_intercept.png"))
+```
+
+---
+
+## Conclusions 
+
+1. Young adults (20-39) associated with higher PHQ-scores (higher scale of depression), progressively over time compared to other age groups
+
+2. Being married (v.single), and being in highest income bracket (v.lowest) associated with decreased depression scores, Not working (v. working full-time) and negative economic impact (v.positive) associated with increase. Rather than sex, lockdown status, etc. financial status seems to play a large role
+
+3. Use of instrumental support, positive reframing, active-coping, planning, venting, associated with decrease seem to be good coping strategies: associated with lower PHQ score 
+
+- Greater variable selection can be performed and $z_i$ (mixing proportion) can also be modelled w.r.t covariates. Could also have looked at marginal coping mechanism effects in young adult population specifically.
+
+---
+
+## References
+
+Fukase et al., (2022). Age-related differences in depressive symptoms and coping strategies during the COVID-19 pandemic in Japan: A longitudinal study
+
+Paul-Christian Bürkner (2021). Bayesian Item Response Modeling in R with brms
+and Stan. Journal of Statistical Software, 100(5), 1-54.
+doi:10.18637/jss.v100.i05
+
+Steven V. Miller (2021). How Should You Think About Your Priors for a Bayesian Analysis?. Blog. Posted online February 8.
