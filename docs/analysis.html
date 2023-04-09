@@ -247,6 +247,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Another strategy is to think of each of the 27 possibilities of scores as 27 trials. A patient could thus theoretically have a chance to score a success (1) in each “trial”. This is akin to an aggregated Binomial sampling distribution, and additionally respects the bounded nature of the data in that 27 is the upper bound. Thus, we use a zero-inflated binomial model.</p>
 <p>We use the <code>{brms}</code> package to fit a Bayesian Mixed Effects model. <code>{brms}</code> uses <code>STAN</code> as its backend, which uses the Hamiltonian Monte Carlo no-U turn sampler (HMC-NUTS). Through a Bayesian approach, we can specify weakly regularizing priors/informative priors when needed for our many coefficients since we will fit quite a few random effects and covariates. We can also obtain posterior distributions for the standard deviation of the random intercept, the coefficients of the age contrasts and so on for improved inference for our questions of interest.</p>
 </section>
+<section id="model-specification-and-identifiability" class="level2">
+<h2 class="anchored" data-anchor-id="model-specification-and-identifiability">Model Specification and Identifiability</h2>
+<p>Let <span class="math inline">\(\text{PHQ}_{ij}\)</span> denote the PHQ scores of interest for <span class="math inline">\(i\)</span>, <span class="math inline">\(i = 1,…., N\)</span> for subjects <span class="math inline">\(j = 1,….,J\)</span>.</p>
+<p>[Likelihood]</p>
+<p><span class="math display">\[\text{PHQ}_{ij} = \begin{cases}
+    0,&amp; \text{with probability} \ zi\\
+    \mathcal{B}(27, \pi_{ij}), &amp;  \text{with probability} \ (1-zi)
+\end{cases}\]</span></p>
+<p><span class="math inline">\(\text{logit}(\pi_{ij}) = \alpha_{j[i]} + \boldsymbol{\beta_{\{k = 1,..,18\}}} \ {\text{\{Demographic and Scale variables\}}}_{ij}\)</span></p>
+<p>[Individual-level random effects]</p>
+<p><span class="math display">\[\alpha_j \sim \mathcal{N}(0, {\sigma^2}_{\alpha_{j}})\]</span></p>
+<p>where <span class="math inline">\(zi\)</span> modelled as a parameter independent of covariates</p>
+<p>Typically, a zero-inflated logistic regression would result in a mixture of two Bernoulli distributions. This model would not necessarily be indentifiable unless strong constraints are imposed on either one of the Bernoulli probabilities, since there would not be enough information to disentangle the individual contributions of the “logistic” and “zero-inflated” components. However, in our setting, we have essentially an “aggregated” logistic regression, where we have information about an additional parameter <span class="math inline">\(N\)</span> (the number of trials). Thus, particularly in our case, where we model <span class="math inline">\(zi\)</span> as a parameter independent of covariates, it is easy to see that the model would estimate <span class="math inline">\(zi\)</span> to be 1/27 (i.e the random chance in obtaining zero from a distribution of possibilities from 0-27). We can confirm below that the model estimates <span class="math inline">\(zi\)</span> to be 1/27 = 0.03.</p>
+</section>
 <section id="priors" class="level2">
 <h2 class="anchored" data-anchor-id="priors">Priors</h2>
 <div class="cell">
@@ -327,109 +341,68 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
+<section id="visualizing-results" class="level2">
+<h2 class="anchored" data-anchor-id="visualizing-results">Visualizing Results</h2>
+<p>We can effectively visualize our results using the <code>{bayesplot}</code> package. We can plot the predicted posterior density distributions of the estimated parameters for both the demographic and the scale variables with 80 <span class="math inline">\(%\)</span> <span class="math inline">\(\%\)</span> density intervals. We can additionally plot the density distribution of the random effects standard deviation, as well as <span class="math inline">\(zi\)</span> (the mixing proportion).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>posterior <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(fit2)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="fu">mcmc_areas</span>(posterior, <span class="at">pars =</span> <span class="fu">c</span>(<span class="st">"b_SEX1"</span>, <span class="st">"b_MARRIED2"</span>, <span class="st">"b_Residential_areas1"</span>,<span class="st">"b_Household_income5"</span>, <span class="st">"b_Employment_status1"</span>, </span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a> <span class="st">"b_Economically_impacted2"</span>), <span class="at">prob =</span> <span class="fl">0.95</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimated Coefficient values"</span>) <span class="sc">+</span> </span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_discrete</span>(<span class="at">labels=</span><span class="fu">c</span>(<span class="st">"b_SEX1"</span> <span class="ot">=</span> <span class="st">"Females - Males"</span>, <span class="st">"b_MARRIED2"</span> <span class="ot">=</span> <span class="st">"Single - Married"</span>, <span class="st">"b_Residential_areas1"</span> <span class="ot">=</span> <span class="st">"No lockdown - Lockdown"</span>, <span class="st">"b_Household_income5"</span> <span class="ot">=</span> <span class="st">"Lowest income - Highest income bracket"</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"b_Employment_status1"</span> <span class="ot">=</span> <span class="st">"Full-time work - No regular job"</span>, <span class="st">"b_Economically_impacted2"</span> <span class="ot">=</span> <span class="st">"No Economic Impact - Negative Impact"</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">text =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">20</span>)) <span class="sc">+</span> <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>, <span class="at">colour =</span> <span class="st">"blue"</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="images/demographics.png" class="img-fluid" style="width:60.0%"></p>
+</div>
+</div>
+<p>Fig.1: Posterior Density Distributions of Demographic Variables</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mcmc_areas</span>(posterior, <span class="at">pars =</span> <span class="fu">c</span>(<span class="st">"b_Religion"</span>, <span class="st">"b_Venting"</span>, <span class="st">"b_Humor"</span>,</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"b_StateAnger"</span>, <span class="st">"b_AngerControl"</span>, </span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"b_Behavioraldisengagement"</span>, <span class="st">"b_Planning"</span>, </span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>                               <span class="st">"b_Acceptance"</span>, <span class="st">"b_SelfBlame"</span>, <span class="st">"b_Activecoping"</span>,  <span class="st">"b_Substanceuse"</span>, <span class="st">"b_Positivereframing"</span>, <span class="st">"b_Useofinstrumentalsupport"</span>), <span class="at">prob =</span> <span class="fl">0.80</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimated Coefficient values"</span>) <span class="sc">+</span> </span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_discrete</span>(<span class="at">labels=</span><span class="fu">c</span>(<span class="st">"b_Religion"</span> <span class="ot">=</span> <span class="st">"Religion"</span>, <span class="st">"b_Venting"</span> <span class="ot">=</span> <span class="st">"Venting"</span>, <span class="st">"b_Humor"</span> <span class="ot">=</span> <span class="st">"Humor"</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"b_StateAnger"</span> <span class="ot">=</span> <span class="st">"State Anger"</span>, <span class="st">"b_AngerControl"</span> <span class="ot">=</span> <span class="st">"Anger Restraint"</span>, </span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"b_Behavioraldisengagement"</span> <span class="ot">=</span> <span class="st">"Behavioural disengagement"</span>, <span class="st">"b_Planning"</span> <span class="ot">=</span> <span class="st">"Planning"</span>, </span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"b_Acceptance"</span> <span class="ot">=</span> <span class="st">"Acceptance"</span>, <span class="st">"b_SelfBlame"</span> <span class="ot">=</span> <span class="st">"Self-Blame"</span>, <span class="st">"b_Activecoping"</span> <span class="ot">=</span> <span class="st">"Active coping"</span>, </span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"b_Substanceuse"</span> <span class="ot">=</span> <span class="st">"Substance Use"</span>, <span class="st">"b_Useofinstrumentalsupport"</span> <span class="ot">=</span> <span class="st">"Use of instrumental support"</span>,</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"b_Positivereframing"</span> <span class="ot">=</span> <span class="st">"Positive Reframing"</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">text =</span> <span class="fu">element_text</span>(<span class="at">size=</span><span class="dv">20</span>)) <span class="sc">+</span> <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>, <span class="at">colour =</span> <span class="st">"blue"</span>,</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>                                                        <span class="at">linetype =</span> <span class="st">"dotted"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="images/scales.png" class="img-fluid" style="width:60.0%"></p>
+</div>
+</div>
+<p>Fig.2: Posterior Density Distributions of Coping Scale and Anger Scale Variables</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mcmc_areas</span>(posterior, <span class="at">pars =</span> <span class="fu">c</span>(<span class="st">"sd_ID__Intercept"</span>), <span class="at">prob =</span> <span class="fl">0.8</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Random Effect Intercept Standard Deviation"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="images/sd_intercept.png" class="img-fluid" style="width:60.0%"></p>
+</div>
+</div>
+<p>Fig.3: Posterior Density Distributions of Random Effect Intercept Standard Deviation</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mcmc_areas</span>(posterior, <span class="at">pars =</span> <span class="fu">c</span>(<span class="st">"zi"</span>), <span class="at">prob =</span> <span class="fl">0.8</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimated Proportion of Structural Zeroes"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="images/zi.png" class="img-fluid" style="width:60.0%"></p>
+</div>
+</div>
+<p>Fig.4: Posterior Density Distributions of <span class="math inline">\(zi\)</span> (mixing proportion)</p>
+</section>
 <section id="answering-our-questions-of-interest" class="level2">
 <h2 class="anchored" data-anchor-id="answering-our-questions-of-interest">Answering our questions of interest</h2>
 <p>Looking at the model summary, it is clear that a higher household income, working full-time (in contrast to not having a job), and being married seem to all be relatively associated with a lower PHQ score.</p>
 <p>In terms of the coping strategies, venting, planning, the use of instrumental support and positive reframing seem to lead to a decrease in overall PHQ score, while use of emotional support, substance use, acceptance, self-blame, behavioural disengagement, higher anger and religion seem to be ineffective coping strategies, as they are associated with a higher PHQ score.</p>
 <p>Finally, we do see a higher PHQ score associated with the younger age-groups, particularly young adults (20-39) relative to senior adults. We also see an interaction between age and the effect of time. In particular, relative to senior adults, young adults seem to have particularly high PHQ scores in month 6, while for middle-aged adults seem to have an increased PHQ score in month 3.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code> Family: zero_inflated_binomial 
-  Links: mu = logit; zi = identity 
-Formula: PHQ | trials(27) ~ time * AGE + SEX + MARRIED + Residential_areas + Household_income + Employment_status + Economically_impacted + Religion + Venting + Humor + StateAnger + AngerControl + Behavioraldisengagement + Planning + Acceptance + SelfBlame + Activecoping + Substanceuse + Useofinstrumentalsupport + Positivereframing + Useofemotionalsupport + (1 | ID) 
-   Data: covid_phq (Number of observations: 4404) 
-  Draws: 4 chains, each with iter = 10000; warmup = 5000; thin = 1;
-         total post-warmup draws = 20000
-
-Group-Level Effects: 
-~ID (Number of levels: 1468) 
-              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-sd(Intercept)     1.12      0.03     1.07     1.18 1.00     3356     6445
-
-Population-Level Effects: 
-                         Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS
-Intercept                   -3.47      0.16    -3.78    -3.15 1.00     2242
-time3                       -0.10      0.05    -0.20    -0.01 1.00     6801
-time6                       -0.09      0.05    -0.18     0.00 1.00     6728
-AGE20M39                     0.75      0.10     0.56     0.95 1.00     1805
-AGE40M64                     0.47      0.09     0.30     0.64 1.00     2167
-SEX1                         0.06      0.07    -0.09     0.20 1.00     1708
-MARRIED2                    -0.56      0.08    -0.72    -0.40 1.00     1676
-Residential_areas1          -0.04      0.06    -0.16     0.08 1.00     1895
-Household_income2           -0.10      0.10    -0.30     0.11 1.01     1408
-Household_income3           -0.25      0.11    -0.47    -0.04 1.01     1426
-Household_income4           -0.18      0.13    -0.44     0.08 1.00     1394
-Household_income5           -0.24      0.13    -0.48     0.01 1.00     1694
-Employment_status1           0.45      0.12     0.22     0.67 1.00     1745
-Employment_status2           0.29      0.10     0.10     0.50 1.00     1896
-Employment_status3           0.24      0.08     0.08     0.40 1.00     1674
-Economically_impacted0       0.04      0.17    -0.30     0.38 1.00     2528
-Economically_impacted2       0.45      0.07     0.32     0.58 1.00     1529
-Religion                     0.03      0.01     0.01     0.05 1.00     8075
-Venting                     -0.03      0.01    -0.06    -0.01 1.00    11229
-Humor                       -0.01      0.01    -0.03     0.02 1.00     9397
-StateAnger                   0.05      0.00     0.04     0.05 1.00     7957
-AngerControl                 0.01      0.00     0.00     0.01 1.00    11824
-Behavioraldisengagement      0.06      0.01     0.04     0.09 1.00    11040
-Planning                    -0.05      0.01    -0.07    -0.02 1.00    11225
-Acceptance                   0.03      0.01     0.01     0.05 1.00    10782
-SelfBlame                    0.09      0.01     0.07     0.11 1.00     9544
-Activecoping                -0.01      0.01    -0.04     0.01 1.00    13577
-Substanceuse                 0.03      0.01     0.01     0.05 1.00     7217
-Useofinstrumentalsupport    -0.03      0.01    -0.05    -0.00 1.00    11843
-Positivereframing           -0.03      0.01    -0.05    -0.01 1.00    11955
-Useofemotionalsupport        0.03      0.01    -0.00     0.05 1.00    10590
-time3:AGE20M39               0.05      0.06    -0.07     0.18 1.00     7713
-time6:AGE20M39               0.15      0.06     0.03     0.27 1.00     7648
-time3:AGE40M64               0.17      0.06     0.06     0.29 1.00     7402
-time6:AGE40M64               0.07      0.06    -0.04     0.18 1.00     7459
-                         Tail_ESS
-Intercept                    5168
-time3                       10511
-time6                       10977
-AGE20M39                     4235
-AGE40M64                     4550
-SEX1                         3638
-MARRIED2                     3525
-Residential_areas1           4426
-Household_income2            3086
-Household_income3            3279
-Household_income4            3354
-Household_income5            3836
-Employment_status1           3385
-Employment_status2           3338
-Employment_status3           3874
-Economically_impacted0       4927
-Economically_impacted2       3678
-Religion                    11857
-Venting                     13973
-Humor                       14094
-StateAnger                  12192
-AngerControl                14575
-Behavioraldisengagement     14177
-Planning                    13869
-Acceptance                  14400
-SelfBlame                   13232
-Activecoping                14980
-Substanceuse                11292
-Useofinstrumentalsupport    13633
-Positivereframing           14565
-Useofemotionalsupport       14274
-time3:AGE20M39              11930
-time6:AGE20M39              12052
-time3:AGE40M64              11562
-time6:AGE40M64              11850
-
-Family Specific Parameters: 
-   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-zi     0.03      0.00     0.02     0.04 1.00    18550    14388
-
-Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
-and Tail_ESS are effective sample size measures, and Rhat is the potential
-scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-</div>
-</div>
 </section>
 <section id="notes" class="level2">
 <h2 class="anchored" data-anchor-id="notes">Notes</h2>
@@ -443,6 +416,7 @@ scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <p>Paul-Christian Bürkner (2021). Bayesian Item Response Modeling in R with brms and Stan. Journal of Statistical Software, 100(5), 1-54. doi:10.18637/jss.v100.i05</p>
 <p>Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). “Visualization in Bayesian workflow.” J. R. Stat. Soc. A_, <em>182</em>, 389-402. doi: 10.1111/rssa.12378 (URL: https://doi.org/10.1111/rssa.12378).</p>
 <p>Kay M (2023). <em>tidybayes: Tidy Data and Geoms for Bayesian Models</em>. doi: 10.5281/zenodo.1308151 (URL: https://doi.org/10.5281/zenodo.1308151), R package version 3.0.4, &lt;URL: http://mjskay.github.io/tidybayes/&gt;.</p>
+<p>Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). “Visualization in Bayesian workflow.” _J. R. Stat. Soc. A_, *182*, 389-402. doi: 10.1111/rssa.12378 (URL: https://doi.org/10.1111/rssa.12378).</p>
 
 
 </section>

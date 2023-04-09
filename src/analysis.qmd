@@ -176,6 +176,28 @@ Another strategy is to think of each of the 27 possibilities of scores as 27 tri
 
 We use the `{brms}` package to fit a Bayesian Mixed Effects model. `{brms}` uses `STAN` as its backend, which uses the Hamiltonian Monte Carlo no-U turn sampler (HMC-NUTS). Through a Bayesian approach, we can specify weakly regularizing priors/informative priors when needed for our many coefficients since we will fit quite a few random effects and covariates. We can also obtain posterior distributions for the standard deviation of the random intercept, the coefficients of the age contrasts and so on for improved inference for our questions of interest.
 
+## Model Specification and Identifiability 
+
+Let $\text{PHQ}_{ij}$ denote the PHQ scores of interest for $i$, $i = 1,…., N$ for subjects $j = 1,….,J$.
+
+[Likelihood]
+
+$$\text{PHQ}_{ij} = \begin{cases}
+    0,& \text{with probability} \ zi\\
+    \mathcal{B}(27, \pi_{ij}), &  \text{with probability} \ (1-zi)
+\end{cases}$$
+
+$\text{logit}(\pi_{ij}) = \alpha_{j[i]} + \boldsymbol{\beta_{\{k = 1,..,18\}}} \ {\text{\{Demographic and Scale variables\}}}_{ij}$
+
+[Individual-level random effects] 
+
+
+$$\alpha_j \sim \mathcal{N}(0, {\sigma^2}_{\alpha_{j}})$$
+
+where $zi$ modelled as a parameter independent of covariates
+
+Typically, a zero-inflated logistic regression would result in a mixture of two Bernoulli distributions. This model would not necessarily be indentifiable unless strong constraints are imposed on either one of the Bernoulli probabilities, since there would not be enough information to disentangle the individual contributions of the "logistic" and "zero-inflated" components. However, in our setting, we have essentially an "aggregated" logistic regression, where we have information about an additional parameter $N$ (the number of trials). Thus, particularly in our case, where we model $zi$ as a parameter independent of covariates, it is easy to see that the model would estimate $zi$ to be 1/27 (i.e the random chance in obtaining zero from a distribution of possibilities from 0-27). We can confirm below that the model estimates $zi$ to be 1/27 = 0.03.
+
 ## Priors
 
 ```{r eval = FALSE}
@@ -238,7 +260,7 @@ We then fit the model with 4 chains using the `{brms}` package with the `cmdstan
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 # reading in model
-rdat <- load(file = "../model_fit/fit2.rds")
+rdat <- load(file = "~/Desktop/model_fit/fit2.rds")
 ```
 
 We can do a quick check to see if our model makes sense. We draw 100 simulated datasets from our posterior distribution and plot this against the observed distribution to see how well the posterior has captured the distribution. We do not see any major systematic discrepancies of the observed data from what can be predicted from the model.
@@ -265,6 +287,67 @@ chains_trace + theme_bw()
 chains_trace + theme_bw()
 ```
 
+## Visualizing Results
+
+We can effectively visualize our results using the `{bayesplot}` package. We can plot the predicted posterior density distributions of the estimated parameters for both the demographic and the scale variables with 80 $%$ $\%$ density intervals. We can additionally plot the density distribution of the random effects standard deviation, as well as $zi$ (the mixing proportion).
+
+```{r eval = FALSE}
+posterior <- as.matrix(fit2)
+
+mcmc_areas(posterior, pars = c("b_SEX1", "b_MARRIED2", "b_Residential_areas1","b_Household_income5", "b_Employment_status1", 
+ "b_Economically_impacted2"), prob = 0.95) + theme_bw() + labs(x = "Estimated Coefficient values") + 
+  scale_y_discrete(labels=c("b_SEX1" = "Females - Males", "b_MARRIED2" = "Single - Married", "b_Residential_areas1" = "No lockdown - Lockdown", "b_Household_income5" = "Lowest income - Highest income bracket",
+  "b_Employment_status1" = "Full-time work - No regular job", "b_Economically_impacted2" = "No Economic Impact - Negative Impact"
+  )) + theme(text = element_text(size=20)) + geom_vline(xintercept = 0, colour = "blue", linetype = "dotted")
+```
+
+```{r echo = FALSE, out.width= '60%'}
+knitr::include_graphics(c("images/demographics.png"))
+```
+
+Fig.1: Posterior Density Distributions of Demographic Variables
+
+```{r eval = FALSE}
+mcmc_areas(posterior, pars = c("b_Religion", "b_Venting", "b_Humor",
+                               "b_StateAnger", "b_AngerControl", 
+                               "b_Behavioraldisengagement", "b_Planning", 
+                               "b_Acceptance", "b_SelfBlame", "b_Activecoping",  "b_Substanceuse", "b_Positivereframing", "b_Useofinstrumentalsupport"), prob = 0.80) + theme_bw() + labs(x = "Estimated Coefficient values") + 
+  scale_y_discrete(labels=c("b_Religion" = "Religion", "b_Venting" = "Venting", "b_Humor" = "Humor",
+                            "b_StateAnger" = "State Anger", "b_AngerControl" = "Anger Restraint", 
+                            "b_Behavioraldisengagement" = "Behavioural disengagement", "b_Planning" = "Planning", 
+                            "b_Acceptance" = "Acceptance", "b_SelfBlame" = "Self-Blame", "b_Activecoping" = "Active coping", 
+                            "b_Substanceuse" = "Substance Use", "b_Useofinstrumentalsupport" = "Use of instrumental support",
+                            "b_Positivereframing" = "Positive Reframing"
+  )) + theme(text = element_text(size=20)) + geom_vline(xintercept = 0, colour = "blue",
+                                                        linetype = "dotted")
+```
+
+```{r echo = FALSE, out.width= '60%'}
+knitr::include_graphics(c("images/scales.png"))
+```
+
+Fig.2: Posterior Density Distributions of Coping Scale and Anger Scale Variables
+
+```{r eval = FALSE}
+mcmc_areas(posterior, pars = c("sd_ID__Intercept"), prob = 0.8) + theme_bw() + labs(x = "Random Effect Intercept Standard Deviation")
+```
+
+```{r echo = FALSE, out.width= '60%'}
+knitr::include_graphics(c("images/sd_intercept.png"))
+```
+
+Fig.3: Posterior Density Distributions of Random Effect Intercept Standard Deviation
+
+```{r eval = FALSE}
+mcmc_areas(posterior, pars = c("zi"), prob = 0.8) + theme_bw() + labs(x = "Estimated Proportion of Structural Zeroes")
+```
+
+```{r echo = FALSE, out.width= '60%'}
+knitr::include_graphics(c("images/zi.png"))
+```
+
+Fig.4: Posterior Density Distributions of $zi$ (mixing proportion)
+
 ## Answering our questions of interest
 
 Looking at the model summary, it is clear that a higher household income, working full-time (in contrast to not having a job), and being married seem to all be relatively associated with a lower PHQ score.
@@ -272,10 +355,6 @@ Looking at the model summary, it is clear that a higher household income, workin
 In terms of the coping strategies, venting, planning, the use of instrumental support and positive reframing seem to lead to a decrease in overall PHQ score, while use of emotional support, substance use, acceptance, self-blame, behavioural disengagement, higher anger and religion seem to be ineffective coping strategies, as they are associated with a higher PHQ score.
 
 Finally, we do see a higher PHQ score associated with the younger age-groups, particularly young adults (20-39) relative to senior adults. We also see an interaction between age and the effect of time. In particular, relative to senior adults, young adults seem to have particularly high PHQ scores in month 6, while for middle-aged adults seem to have an increased PHQ score in month 3.
-
-```{r}
-summary(fit2)
-```
 
 ## Notes
 
@@ -294,3 +373,7 @@ Paul-Christian Bürkner (2021). Bayesian Item Response Modeling in R with brms a
 Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). "Visualization in Bayesian workflow." J. R. Stat. Soc. A\_, *182*, 389-402. doi: 10.1111/rssa.12378 (URL: https://doi.org/10.1111/rssa.12378).
 
 Kay M (2023). *tidybayes: Tidy Data and Geoms for Bayesian Models*. doi: 10.5281/zenodo.1308151 (URL: https://doi.org/10.5281/zenodo.1308151), R package version 3.0.4, \<URL: http://mjskay.github.io/tidybayes/\>.
+
+Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). "Visualization in
+Bayesian workflow." \_J. R. Stat. Soc. A\_, \*182\*, 389-402. doi:
+10.1111/rssa.12378 (URL: https://doi.org/10.1111/rssa.12378).
