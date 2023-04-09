@@ -176,11 +176,11 @@ Another strategy is to think of each of the 27 possibilities of scores as 27 tri
 
 We use the `{brms}` package to fit a Bayesian Mixed Effects model. `{brms}` uses `STAN` as its backend, which uses the Hamiltonian Monte Carlo no-U turn sampler (HMC-NUTS). Through a Bayesian approach, we can specify weakly regularizing priors/informative priors when needed for our many coefficients since we will fit quite a few random effects and covariates. We can also obtain posterior distributions for the standard deviation of the random intercept, the coefficients of the age contrasts and so on for improved inference for our questions of interest.
 
-## Model Specification and Identifiability 
+## Model Specification and Identifiability
 
 Let $\text{PHQ}_{ij}$ denote the PHQ scores of interest for $i$, $i = 1,…., N$ for subjects $j = 1,….,J$.
 
-[Likelihood]
+\[Likelihood\]
 
 $$\text{PHQ}_{ij} = \begin{cases}
     0,& \text{with probability} \ zi\\
@@ -189,8 +189,7 @@ $$\text{PHQ}_{ij} = \begin{cases}
 
 $\text{logit}(\pi_{ij}) = \alpha_{j[i]} + \boldsymbol{\beta_{\{k = 1,..,18\}}} \ {\text{\{Demographic and Scale variables\}}}_{ij}$
 
-[Individual-level random effects] 
-
+\[Individual-level random effects\]
 
 $$\alpha_j \sim \mathcal{N}(0, {\sigma^2}_{\alpha_{j}})$$
 
@@ -289,7 +288,7 @@ chains_trace + theme_bw()
 
 ## Visualizing Results
 
-We can effectively visualize our results using the `{bayesplot}` package. We can plot the predicted posterior density distributions of the estimated parameters for both the demographic and the scale variables with 80 $%$ $\%$ density intervals. We can additionally plot the density distribution of the random effects standard deviation, as well as $zi$ (the mixing proportion).
+We can effectively visualize our results using the `{bayesplot}` package. We can plot the predicted posterior density distributions of the estimated parameters for both the demographic and the scale variables with 80 $%$ $\%$ density intervals. We can additionally plot the density distribution of the random effects standard deviation, as well as $zi$ (the mixing proportion). We can additionally plot the conditional marginal effects of the time-age interaction (using the posterior median as the summary statistic).
 
 ```{r eval = FALSE}
 posterior <- as.matrix(fit2)
@@ -348,6 +347,17 @@ knitr::include_graphics(c("images/zi.png"))
 
 Fig.4: Posterior Density Distributions of $zi$ (mixing proportion)
 
+```{r eval = FALSE}
+plot(conditional_effects(fit2, effects = "time:AGE"), plot = FALSE)[[1]] + theme_bw() +
+  labs(x = "Time (Months)", y = "Patient-Health-Questionnaire-9 Score", colour = "Age")
+```
+
+```{r echo = FALSE, out.width= '60%'}
+knitr::include_graphics(c("images/timeeffects.png"))
+```
+
+Fig.5: Conditional Interaction Effect between Time and Age
+
 ## Answering our questions of interest
 
 Looking at the model summary, it is clear that a higher household income, working full-time (in contrast to not having a job), and being married seem to all be relatively associated with a lower PHQ score.
@@ -374,6 +384,4 @@ Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). "Visualization in 
 
 Kay M (2023). *tidybayes: Tidy Data and Geoms for Bayesian Models*. doi: 10.5281/zenodo.1308151 (URL: https://doi.org/10.5281/zenodo.1308151), R package version 3.0.4, \<URL: http://mjskay.github.io/tidybayes/\>.
 
-Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). "Visualization in
-Bayesian workflow." \_J. R. Stat. Soc. A\_, \*182\*, 389-402. doi:
-10.1111/rssa.12378 (URL: https://doi.org/10.1111/rssa.12378).
+Gabry J, Simpson D, Vehtari A, Betancourt M, Gelman A (2019). "Visualization in Bayesian workflow." \_J. R. Stat. Soc. A\_, \*182\*, 389-402. doi: 10.1111/rssa.12378 (URL: https://doi.org/10.1111/rssa.12378).

@@ -343,7 +343,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="visualizing-results" class="level2">
 <h2 class="anchored" data-anchor-id="visualizing-results">Visualizing Results</h2>
-<p>We can effectively visualize our results using the <code>{bayesplot}</code> package. We can plot the predicted posterior density distributions of the estimated parameters for both the demographic and the scale variables with 80 <span class="math inline">\(%\)</span> <span class="math inline">\(\%\)</span> density intervals. We can additionally plot the density distribution of the random effects standard deviation, as well as <span class="math inline">\(zi\)</span> (the mixing proportion).</p>
+<p>We can effectively visualize our results using the <code>{bayesplot}</code> package. We can plot the predicted posterior density distributions of the estimated parameters for both the demographic and the scale variables with 80 <span class="math inline">\(%\)</span> <span class="math inline">\(\%\)</span> density intervals. We can additionally plot the density distribution of the random effects standard deviation, as well as <span class="math inline">\(zi\)</span> (the mixing proportion). We can additionally plot the conditional marginal effects of the time-age interaction (using the posterior median as the summary statistic).</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>posterior <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(fit2)</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -397,6 +397,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Fig.4: Posterior Density Distributions of <span class="math inline">\(zi\)</span> (mixing proportion)</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">conditional_effects</span>(fit2, <span class="at">effects =</span> <span class="st">"time:AGE"</span>), <span class="at">plot =</span> <span class="cn">FALSE</span>)[[<span class="dv">1</span>]] <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Time (Months)"</span>, <span class="at">y =</span> <span class="st">"Patient-Health-Questionnaire-9 Score"</span>, <span class="at">colour =</span> <span class="st">"Age"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="images/timeeffects.png" class="img-fluid" style="width:60.0%"></p>
+</div>
+</div>
+<p>Fig.5: Conditional Interaction Effect between Time and Age</p>
 </section>
 <section id="answering-our-questions-of-interest" class="level2">
 <h2 class="anchored" data-anchor-id="answering-our-questions-of-interest">Answering our questions of interest</h2>
